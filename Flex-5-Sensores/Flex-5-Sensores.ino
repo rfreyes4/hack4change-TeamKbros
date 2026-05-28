@@ -1,8 +1,22 @@
+#include <Wire.h>
+
 const int PIN_AZUL_VERDE = 34;
 const int PIN_MARRON_BLANCO = 35;
 const int PIN_ROJO_NARANJA = 32;
 const int PIN_MORADO_AZUL = 33;
 const int PIN_VERDE_AMARILLO = 25;
+
+const int SDA_MPU = 21;
+const int SCL_MPU = 22;
+const int MPU_ADDR = 0x68;
+
+float ax_g = 0;
+float ay_g = 0;
+float az_g = 0;
+
+float gx_dps = 0;
+float gy_dps = 0;
+float gz_dps = 0;
 
 // ================= SENSOR MORADO/AZUL =================
 float filtradoMoradoAzul = 0;
@@ -94,6 +108,51 @@ int procesarSensorAzulVerde() {
   return porcentajeFlexion;
 }
 
+void iniciarMPU6050() {
+  Wire.begin(SDA_MPU, SCL_MPU);
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x6B);
+  Wire.write(0x00);
+  Wire.endTransmission(true);
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x1C);
+  Wire.write(0x00);
+  Wire.endTransmission(true);
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x1B);
+  Wire.write(0x00);
+  Wire.endTransmission(true);
+}
+
+void leerMPU6050() {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(MPU_ADDR, 14, true);
+
+  int16_t ax = Wire.read() << 8 | Wire.read();
+  int16_t ay = Wire.read() << 8 | Wire.read();
+  int16_t az = Wire.read() << 8 | Wire.read();
+
+  int16_t temp = Wire.read() << 8 | Wire.read();
+
+  int16_t gx = Wire.read() << 8 | Wire.read();
+  int16_t gy = Wire.read() << 8 | Wire.read();
+  int16_t gz = Wire.read() << 8 | Wire.read();
+
+  ax_g = ax / 16384.0;
+  ay_g = ay / 16384.0;
+  az_g = az / 16384.0;
+
+  gx_dps = gx / 131.0;
+  gy_dps = gy / 131.0;
+  gz_dps = gz / 131.0;
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -104,6 +163,8 @@ void setup() {
   analogSetPinAttenuation(PIN_ROJO_NARANJA, ADC_11db);
   analogSetPinAttenuation(PIN_MORADO_AZUL, ADC_11db);
   analogSetPinAttenuation(PIN_VERDE_AMARILLO, ADC_11db);
+
+  iniciarMPU6050();
 
   filtradoAzulVerde = analogRead(PIN_AZUL_VERDE);
   filtradoMarronBlanco = analogRead(PIN_MARRON_BLANCO);
@@ -167,6 +228,8 @@ void loop() {
     true
   );
 
+  leerMPU6050();
+
   Serial.print("Min:0");
   Serial.print(",");
 
@@ -188,6 +251,30 @@ void loop() {
 
   Serial.print("Verde_Amarillo:");
   Serial.print(flexVerdeAmarillo);
+  Serial.print(",");
+
+  Serial.print("AX:");
+  Serial.print(ax_g);
+  Serial.print(",");
+
+  Serial.print("AY:");
+  Serial.print(ay_g);
+  Serial.print(",");
+
+  Serial.print("AZ:");
+  Serial.print(az_g);
+  Serial.print(",");
+
+  Serial.print("GX:");
+  Serial.print(gx_dps);
+  Serial.print(",");
+
+  Serial.print("GY:");
+  Serial.print(gy_dps);
+  Serial.print(",");
+
+  Serial.print("GZ:");
+  Serial.print(gz_dps);
   Serial.print(",");
 
   Serial.println("Max:100");
