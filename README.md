@@ -5,7 +5,7 @@
 <h1 align="center">GestUS</h1>
 
 <p align="center">
-  Guante sensorial para capturar la flexión de los dedos y reconocer gestos mediante ESP32, Python e IA.
+  Guante sensorial para capturar la flexión de los dedos, reconocer gestos y visualizarlos en tiempo real mediante ESP32, Python e IA.
 </p>
 
 ---
@@ -14,10 +14,10 @@
 
 **GestUS** es un prototipo desarrollado para **Hack4Change** por el **Team Kbros**.
 
-El proyecto consiste en un guante sensorial capaz de leer el movimiento de la mano mediante sensores de flexión, un módulo MPU6050 y un ESP32.
-Los datos capturados se procesan en Python para reconocer gestos y visualizarlos en una interfaz web 3D.
+El proyecto consiste en un guante sensorial capaz de leer el movimiento de la mano mediante sensores de flexión caseros, un módulo MPU6050 y un ESP32.
+Los datos capturados se procesan en Python para reconocer gestos y también pueden visualizarse en una interfaz web 3D.
 
-El objetivo inicial es reconocer letras o gestos concretos, con una posible aplicación futura en accesibilidad, educación, rehabilitación o interfaces de control.
+El objetivo principal es reconocer letras o gestos concretos, con posibles aplicaciones futuras en accesibilidad, educación, rehabilitación o interfaces de control.
 
 ---
 
@@ -179,6 +179,8 @@ hack4change-TeamKbros/
 ├── assets/
 │   └── logo_gestus.png
 │
+├── requirements.txt
+├── .gitignore
 └── README.md
 ```
 
@@ -186,18 +188,47 @@ hack4change-TeamKbros/
 
 ## Instalación
 
-Clonar el repositorio:
+El proyecto utiliza un entorno virtual de Python para mantener las versiones de librerías necesarias para que el modelo de IA funcione correctamente.
+
+Se recomienda instalar las dependencias desde `requirements.txt`.
+
+### 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/rfreyes4/hack4change-TeamKbros.git
 cd hack4change-TeamKbros
 ```
 
-Instalar dependencias de Python:
+### 2. Crear un entorno virtual
+
+En Linux:
 
 ```bash
-pip install pandas numpy scikit-learn pyserial websockets
+python3 -m venv .venv
+source .venv/bin/activate
 ```
+
+En Windows:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+Cuando el entorno esté activado, la terminal mostrará algo parecido a:
+
+```bash
+(.venv) usuario@pc:~/hack4change-TeamKbros$
+```
+
+### 3. Instalar dependencias
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+El archivo `requirements.txt` fija las versiones usadas durante el desarrollo para evitar problemas de compatibilidad con el modelo entrenado.
 
 ---
 
@@ -211,17 +242,22 @@ Abrir en Arduino IDE el código de la carpeta:
 GUANTEV2/
 ```
 
-Seleccionar la placa ESP32 y subir el programa.
-
----
+Seleccionar la placa ESP32, elegir el puerto correspondiente y subir el programa.
 
 ### 2. Ejecutar GestUS
 
-Desde la carpeta principal del proyecto:
+Con el entorno virtual activado, ejecutar desde la carpeta principal:
 
 ```bash
 cd GestUS
 python3 gestus_launcher.py
+```
+
+En Windows:
+
+```bash
+cd GestUS
+python gestus_launcher.py
 ```
 
 El lanzador permite seleccionar entre los modos disponibles:
@@ -229,6 +265,30 @@ El lanzador permite seleccionar entre los modos disponibles:
 ```text
 Modo 1: Traducción de gestos
 Modo 2: Visualización web
+```
+
+---
+
+## Activar el entorno en futuras ejecuciones
+
+Cada vez que se abra una nueva terminal, hay que volver a activar el entorno virtual.
+
+En Linux:
+
+```bash
+cd hack4change-TeamKbros
+source .venv/bin/activate
+cd GestUS
+python3 gestus_launcher.py
+```
+
+En Windows:
+
+```bash
+cd hack4change-TeamKbros
+.venv\Scripts\activate
+cd GestUS
+python gestus_launcher.py
 ```
 
 ---

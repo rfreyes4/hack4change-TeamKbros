@@ -8,4 +8,7 @@ build/
 *.o
 *.d
 .DS_Store
-
+.venv/
+.venv_modelo_antiguo/
+__pycache__/
+*.pyc
