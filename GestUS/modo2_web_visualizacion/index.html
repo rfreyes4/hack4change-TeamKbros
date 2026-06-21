@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teleoperación - Mano Derecha Biónica</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #0b0f17; font-family: 'Segoe UI', system-ui, sans-serif; cursor: grab; color: #f8fafc; }
+        body:active { cursor: grabbing; }
+        canvas { display: block; }
+        
+        #info { position: absolute; top: 20px; left: 20px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 16px; font-size: 14px; pointer-events: none; z-index: 10; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+        h3 { margin: 0 0 12px 0; color: #38bdf8; font-size: 16px; text-transform: uppercase; letter-spacing: 1.5px; }
+        .dato { margin: 8px 0; display: flex; justify-content: space-between; width: 190px; font-family: monospace; font-size: 15px; }
+        .status { font-weight: bold; color: #ef4444; margin-bottom: 12px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); font-size: 12px; }
+        .connected { color: #10b981; background: rgba(16, 185, 129, 0.15); }
+        .pose-fija { color: #38bdf8; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; }
+
+        #panel-manual { position: absolute; top: 20px; right: 20px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); padding: 22px; border-radius: 16px; font-size: 14px; z-index: 10; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); width: 220px; }
+        .control-group { margin-bottom: 12px; }
+        .control-group label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #cbd5e1; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #38bdf8; }
+        input[type=range]:disabled { opacity: 0.5; cursor: not-allowed; }
+        .toggle-container { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .toggle-container label { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: bold; color: #f8fafc; }
+        input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: #f59e0b; }
+        .manual-activo { color: #f59e0b; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="info">
+        <h3 id="titulo-panel">SKELETON TELEMETRY</h3>
+        <div id="estado" class="status">Estado: Desconectado ❌</div>
+        <div class="dato"><span>Mano Pulgar:</span><span id="val-pulgar">0%</span></div>
+        <div class="dato"><span>Mano Índice:</span><span id="val-indice">0%</span></div>
+        <div class="dato"><span>Mano Corazón:</span><span id="val-corazon">0%</span></div>
+        <div class="dato"><span>Mano Anular:</span><span id="val-anular">0%</span></div>
+        <div class="dato"><span>Mano Meñique:</span><span id="val-menique">0%</span></div>
+    </div>
+
+    <div id="panel-manual">
+        <h3 id="titulo-manual">CONTROLES WEB</h3>
+        
+        <div class="toggle-container">
+            <label>
+                <input type="checkbox" id="chk-manual"> Activar Modo Web
+            </label>
+        </div>
+
+        <div class="control-group">
+            <label>Pulgar <span id="lbl-sl-pulgar">0%</span></label>
+            <input type="range" id="sl-pulgar" min="0" max="100" value="0" disabled>
+        </div>
+        <div class="control-group">
+            <label>Índice <span id="lbl-sl-indice">0%</span></label>
+            <input type="range" id="sl-indice" min="0" max="100" value="0" disabled>
+        </div>
+        <div class="control-group">
+            <label>Corazón <span id="lbl-sl-corazon">0%</span></label>
+            <input type="range" id="sl-corazon" min="0" max="100" value="0" disabled>
+        </div>
+        <div class="control-group">
+            <label>Anular <span id="lbl-sl-anular">0%</span></label>
+            <input type="range" id="sl-anular" min="0" max="100" value="0" disabled>
+        </div>
+        <div class="control-group">
+            <label>Meñique <span id="lbl-sl-menique">0%</span></label>
+            <input type="range" id="sl-menique" min="0" max="100" value="0" disabled>
+        </div>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0f17);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0.5, 5.8); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.35;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;       
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 2.5;          
+        controls.maxDistance = 9.0;         
+        controls.target.set(0, 0.5, 0);        
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        
+        const luzBlanca = new THREE.DirectionalLight(0xffffff, 1.3);
+        luzBlanca.position.set(5, 8, 4);
+        scene.add(luzBlanca);
+
+        const luzNeonAzul = new THREE.DirectionalLight(0x06b6d4, 0.9);
+        luzNeonAzul.position.set(-6, -2, 3);
+        scene.add(luzNeonAzul);
+
+        const matChasisBlanco = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.18, metalness: 0.15 });
+        const matPistonCromo = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.08, metalness: 0.85 }); 
+
+        const armaduraMano = new THREE.Group();
+        armaduraMano.position.set(0, -1.4, 0); 
+        scene.add(armaduraMano);
+
+        const grupoMecanismos = new THREE.Group();
+        grupoMecanismos.position.y = 1.1; 
+        armaduraMano.add(grupoMecanismos);
+
+        const conectorMuñeca = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.3, 32), matChasisBlanco);
+        conectorMuñeca.position.set(0, -0.9, 0);
+        grupoMecanismos.add(conectorMuñeca);
+
+        const carpoMedial = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.25), matChasisBlanco);
+        carpoMedial.position.set(-0.18, -0.7, 0);
+        grupoMecanismos.add(carpoMedial);
+
+        const carpoLateral = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.25), matChasisBlanco);
+        carpoLateral.position.set(0.18, -0.7, 0);
+        grupoMecanismos.add(carpoLateral);
+
+        const mapaNudillos = {
+            pulgar: new THREE.Vector3(1.1, -0.05, 0),
+            menique: new THREE.Vector3(-0.96, 0.6, 0),
+            anular: new THREE.Vector3(-0.48, 0.85, 0),
+            corazon: new THREE.Vector3(0.0, 0.9, 0),
+            indice: new THREE.Vector3(0.48, 0.85, 0)
+        };
+
+        function fabricarMetacarpianoSegmentadoReforzado(origX, origY, finX, finY, rBase) {
+            const pInicio = new THREE.Vector3(origX, origY, 0);
+            const pFin = new THREE.Vector3(finX, finY, 0);
+            const mitadCamino = new THREE.Vector3().addVectors(pInicio, pFin).multiplyScalar(0.5);
+            
+            crearHuesoPalmar(pInicio, mitadCamino, rBase, true);
+            crearHuesoPalmar(mitadCamino, pFin, rBase * 0.9, false);
+        }
+
+        function crearHuesoPalmar(pA, pB, radio, esBase) {
+            const distancia = pA.distanceTo(pB);
+            const centro = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
+            const nodoHueso = new THREE.Group();
+            nodoHueso.position.copy(centro);
+            nodoHueso.lookAt(pB);
+            nodoHueso.rotateX(Math.PI / 2);
+            const huesoFino = new THREE.Mesh(new THREE.CylinderGeometry(radio * 0.35, radio * 0.45, distancia, 12), matPistonCromo);
+            nodoHueso.add(huesoFino);
+            const corazaPalma = new THREE.Mesh(new THREE.BoxGeometry(radio * 0.9, distancia * 0.75, radio * 0.6), matChasisBlanco);
+            corazaPalma.position.set(0, 0, radio * 0.15);
+            nodoHueso.add(corazaPalma);
+            const juntaEsfera = new THREE.Mesh(new THREE.SphereGeometry(radio * 0.65, 16, 16), matChasisBlanco);
+            juntaEsfera.position.y = distancia / 2;
+            nodoHueso.add(juntaEsfera);
+            grupoMecanismos.add(nodoHueso);
+        }
+
+        function agregarHuesoAccesorioPesado(pA, pB, radio) {
+            const distancia = pA.distanceTo(pB);
+            const centro = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
+            const accesorio = new THREE.Group();
+            accesorio.position.copy(centro);
+            accesorio.lookAt(pB);
+            accesorio.rotateX(Math.PI / 2);
+            const barra = new THREE.Mesh(new THREE.CylinderGeometry(radio * 0.4, radio * 0.4, distancia, 8), matPistonCromo);
+            accesorio.add(barra);
+            grupoMecanismos.add(accesorio);
+        }
+
+        fabricarMetacarpianoSegmentadoReforzado(0.20, -0.65, mapaNudillos.pulgar.x, mapaNudillos.pulgar.y, 0.16);  
+        fabricarMetacarpianoSegmentadoReforzado(0.15, -0.6, mapaNudillos.indice.x, mapaNudillos.indice.y, 0.16);  
+        fabricarMetacarpianoSegmentadoReforzado(0.0, -0.6, mapaNudillos.corazon.x, mapaNudillos.corazon.y, 0.17);  
+        fabricarMetacarpianoSegmentadoReforzado(-0.15, -0.6, mapaNudillos.anular.x, mapaNudillos.anular.y, 0.16); 
+        fabricarMetacarpianoSegmentadoReforzado(-0.20, -0.65, mapaNudillos.menique.x, mapaNudillos.menique.y, 0.14);
+
+        const pMedioPulgar = new THREE.Vector3().addVectors(new THREE.Vector3(0.20, -0.65, 0), mapaNudillos.pulgar).multiplyScalar(0.5);
+        const pMedioIndice = new THREE.Vector3().addVectors(new THREE.Vector3(0.15, -0.6, 0), mapaNudillos.indice).multiplyScalar(0.5);
+        const pMedioCorazon = new THREE.Vector3().addVectors(new THREE.Vector3(0.0, -0.6, 0), mapaNudillos.corazon).multiplyScalar(0.5);
+        const pMedioAnular = new THREE.Vector3().addVectors(new THREE.Vector3(-0.15, -0.6, 0), mapaNudillos.anular).multiplyScalar(0.5);
+        const pMedioMenique = new THREE.Vector3().addVectors(new THREE.Vector3(-0.20, -0.65, 0), mapaNudillos.menique).multiplyScalar(0.5);
+
+        agregarHuesoAccesorioPesado(mapaNudillos.menique, mapaNudillos.anular, 0.04);
+        agregarHuesoAccesorioPesado(mapaNudillos.anular, mapaNudillos.corazon, 0.04);
+        agregarHuesoAccesorioPesado(mapaNudillos.corazon, mapaNudillos.indice, 0.04);
+        agregarHuesoAccesorioPesado(pMedioMenique, pMedioAnular, 0.03);
+        agregarHuesoAccesorioPesado(pMedioAnular, pMedioCorazon, 0.03);
+        agregarHuesoAccesorioPesado(pMedioCorazon, pMedioIndice, 0.03);
+        agregarHuesoAccesorioPesado(pMedioIndice, pMedioPulgar, 0.03);
+
+        let articulacionesRobóticas = { pulgar: [], indice: [], corazon: [], anular: [], menique: [] };
+
+        function fabricarDedoFino(key, pos, rBase, largoTotal, rotZ, esPulgar = false) {
+            const baseNudillo = new THREE.Group();
+            baseNudillo.position.copy(pos);
+            baseNudillo.rotation.z = rotZ;
+            grupoMecanismos.add(baseNudillo);
+            let nodoPadre = baseNudillo;
+            let falangesConectadas = [];
+            let tramoLargo = largoTotal / 3;
+            for (let i = 0; i < 3; i++) {
+                const subEstructura = new THREE.Group();
+                nodoPadre.add(subEstructura);
+                if (esPulgar) { subEstructura.rotation.y = -Math.PI / 2; }
+                const servoArticulacion = new THREE.Mesh(new THREE.SphereGeometry(rBase * (0.65 - i * 0.08), 16, 16), matChasisBlanco);
+                subEstructura.add(servoArticulacion);
+                const rotorInterno = new THREE.Mesh(new THREE.CylinderGeometry(rBase * (0.65 - i * 0.08), rBase * (0.65 - i * 0.08), tramoLargo * 0.18, 12), matChasisBlanco);
+                rotorInterno.rotation.x = Math.PI / 2;
+                subEstructura.add(rotorInterno);
+                const pistonFalange = new THREE.Mesh(new THREE.CylinderGeometry(rBase * (0.35 - i * 0.05), rBase * (0.45 - i * 0.05), tramoLargo * 0.85, 12), matPistonCromo);
+                pistonFalange.position.y = tramoLargo * 0.42;
+                subEstructura.add(pistonFalange);
+                const placaProtectora = new THREE.Mesh(new THREE.BoxGeometry(rBase * 0.9, tramoLargo * 0.5, rBase * 0.6), matChasisBlanco);
+                placaProtectora.position.set(0, tramoLargo * 0.42, rBase * 0.15);
+                subEstructura.add(placaProtectora);
+                if (i === 2) {
+                    const puntaSensor = new THREE.Mesh(new THREE.CylinderGeometry(rBase * 0.25, rBase * 0.3, 0.12, 12), matChasisBlanco);
+                    puntaSensor.position.y = tramoLargo * 0.85;
+                    subEstructura.add(puntaSensor);
+                }
+                falangesConectadas.push(subEstructura);
+                const proxConector = new THREE.Group();
+                proxConector.position.y = tramoLargo * 0.85;
+                subEstructura.add(proxConector);
+                nodoPadre = proxConector;
+            }
+            articulacionesRobóticas[key] = falangesConectadas;
+        }
+
+        fabricarDedoFino('pulgar', mapaNudillos.pulgar, 0.16, 1.2, 0.15, true); 
+        fabricarDedoFino('menique', mapaNudillos.menique, 0.14, 1.6, 0.05);
+        fabricarDedoFino('anular', mapaNudillos.anular, 0.16, 2.0, 0.02);
+        fabricarDedoFino('corazon', mapaNudillos.corazon, 0.17, 2.2, 0.0);
+        fabricarDedoFino('indice', mapaNudillos.indice, 0.16, 2.0, -0.02);
+
+        let telemetriaSuave = { pulgar: 0, indice: 0, corazon: 0, anular: 0, menique: 0 };
+        let telemetriaTextos = { pulgar: 0, indice: 0, corazon: 0, anular: 0, menique: 0 };
+        let payloadObjetivo = { tipo: "inicio", dedos: { pulgar: 0, indice: 0, corazon: 0, anular: 0, menique: 0 }};
+
+        const chkManual = document.getElementById('chk-manual');
+        const titManual = document.getElementById('titulo-manual');
+        const sliders = {
+            pulgar: document.getElementById('sl-pulgar'),
+            indice: document.getElementById('sl-indice'),
+            corazon: document.getElementById('sl-corazon'),
+            anular: document.getElementById('sl-anular'),
+            menique: document.getElementById('sl-menique')
+        };
+        const labels = {
+            pulgar: document.getElementById('lbl-sl-pulgar'),
+            indice: document.getElementById('lbl-sl-indice'),
+            corazon: document.getElementById('lbl-sl-corazon'),
+            anular: document.getElementById('lbl-sl-anular'),
+            menique: document.getElementById('lbl-sl-menique')
+        };
+
+        chkManual.addEventListener('change', (e) => {
+            const isManual = e.target.checked;
+            Object.values(sliders).forEach(slider => slider.disabled = !isManual);
+            titManual.className = isManual ? "manual-activo" : "";
+            
+            if(isManual) {
+                payloadObjetivo.tipo = "manual_web";
+                actualizarPayloadDesdeSliders();
+            }
+        });
+
+        function actualizarPayloadDesdeSliders() {
+            if (!chkManual.checked) return;
+            
+            payloadObjetivo.dedos.pulgar = parseFloat(sliders.pulgar.value) || 0;
+            payloadObjetivo.dedos.indice = parseFloat(sliders.indice.value) || 0;
+            payloadObjetivo.dedos.corazon = parseFloat(sliders.corazon.value) || 0;
+            payloadObjetivo.dedos.anular = parseFloat(sliders.anular.value) || 0;
+            payloadObjetivo.dedos.menique = parseFloat(sliders.menique.value) || 0;
+            
+            Object.keys(sliders).forEach(key => {
+                labels[key].innerText = sliders[key].value + "%";
+            });
+        }
+
+        Object.values(sliders).forEach(slider => {
+            slider.addEventListener('input', actualizarPayloadDesdeSliders);
+        });
+
+        const socket = new WebSocket('ws://localhost:8765');
+        const txtEstado = document.getElementById('estado');
+        const txtTitulo = document.getElementById('titulo-panel');
+        
+        socket.onopen = () => { txtEstado.innerText = "Estado: Conectado 🟢"; txtEstado.className = "status connected"; };
+        socket.onclose = () => { txtEstado.innerText = "Estado: Desconectado ❌"; txtEstado.className = "status"; };
+        
+        socket.onmessage = (event) => {
+            if (chkManual.checked) {
+                txtEstado.innerText = "MODO: CONTROL WEB 🖱️"; 
+                txtEstado.className = "status pose-fija";
+                txtTitulo.innerText = "OVERRIDE ACTIVO";
+                return;
+            }
+
+            try {
+                const data = JSON.parse(event.data);
+                if(data && data.dedos) {
+                    payloadObjetivo = data;
+                }
+            } catch (err) {
+                console.error("Error al leer datos del servidor:", err);
+            }
+            
+            if(payloadObjetivo.tipo === "pose_fija") {
+                txtEstado.innerText = "MODO: POSE PROMEDIO 🎬"; txtEstado.className = "status pose-fija";
+                txtTitulo.innerText = "HISTOGRAMA '" + payloadObjetivo.letra_mostrada + "'";
+            } else {
+                txtEstado.innerText = "Estado: Conectado 🟢"; txtEstado.className = "status connected";
+                txtTitulo.innerText = "SKELETON TELEMETRY";
+            }
+
+            sliders.pulgar.value = payloadObjetivo.dedos.pulgar || 0;
+            sliders.indice.value = payloadObjetivo.dedos.indice || 0;
+            sliders.corazon.value = payloadObjetivo.dedos.corazon || 0;
+            sliders.anular.value = payloadObjetivo.dedos.anular || 0;
+            sliders.menique.value = payloadObjetivo.dedos.menique || 0;
+            
+            Object.keys(sliders).forEach(key => {
+                labels[key].innerText = Math.round(payloadObjetivo.dedos[key] || 0) + "%";
+            });
+        };
+
+        const flexNudillo = (85 * Math.PI) / 180;  
+        const flexMedio = (95 * Math.PI) / 180;   
+        const flexPunta = (75 * Math.PI) / 180;    
+
+        function moverActuadorDedo(key, valorMapeado) {
+            const tramos = articulacionesRobóticas[key];
+            if (!tramos) return;
+            const f = valorMapeado / 100;
+            tramos[0].rotation.x = f * flexNudillo;
+            tramos[1].rotation.x = f * flexMedio;
+            tramos[2].rotation.x = f * flexPunta;
+
+            if (key === 'indice') {
+                tramos[0].rotation.z = f * ((4 * Math.PI) / 180); 
+            } else if (key === 'anular') {
+                tramos[0].rotation.z = -f * ((3 * Math.PI) / 180); 
+            } else if (key === 'menique') {
+                tramos[0].rotation.z = -f * ((8 * Math.PI) / 180); 
+            } else if (key === 'corazon') {
+                tramos[0].rotation.z = 0; 
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (payloadObjetivo && payloadObjetivo.dedos) {
+                const LERP = (payloadObjetivo.tipo === "pose_fija" || payloadObjetivo.tipo === "manual_web") ? 0.4 : 0.14;
+                const LERP_TEXTO = 0.2; 
+                
+                telemetriaSuave.pulgar += ((payloadObjetivo.dedos.pulgar || 0) - telemetriaSuave.pulgar) * LERP;
+                telemetriaSuave.indice += ((payloadObjetivo.dedos.indice || 0) - telemetriaSuave.indice) * LERP;
+                telemetriaSuave.corazon += ((payloadObjetivo.dedos.corazon || 0) - telemetriaSuave.corazon) * LERP;
+                telemetriaSuave.anular += ((payloadObjetivo.dedos.anular || 0) - telemetriaSuave.anular) * LERP;
+                telemetriaSuave.menique += ((payloadObjetivo.dedos.menique || 0) - telemetriaSuave.menique) * LERP;
+
+                telemetriaTextos.pulgar += ((payloadObjetivo.dedos.pulgar || 0) - telemetriaTextos.pulgar) * LERP_TEXTO;
+                telemetriaTextos.indice += ((payloadObjetivo.dedos.indice || 0) - telemetriaTextos.indice) * LERP_TEXTO;
+                telemetriaTextos.corazon += ((payloadObjetivo.dedos.corazon || 0) - telemetriaTextos.corazon) * LERP_TEXTO;
+                telemetriaTextos.anular += ((payloadObjetivo.dedos.anular || 0) - telemetriaTextos.anular) * LERP_TEXTO;
+                telemetriaTextos.menique += ((payloadObjetivo.dedos.menique || 0) - telemetriaTextos.menique) * LERP_TEXTO;
+                
+                document.getElementById('val-pulgar').innerText = Math.round(telemetriaTextos.pulgar) + "%";
+                document.getElementById('val-indice').innerText = Math.round(telemetriaTextos.indice) + "%";
+                document.getElementById('val-corazon').innerText = Math.round(telemetriaTextos.corazon) + "%";
+                document.getElementById('val-anular').innerText = Math.round(telemetriaTextos.anular) + "%";
+                document.getElementById('val-menique').innerText = Math.round(telemetriaTextos.menique) + "%";
+
+                moverActuadorDedo('indice', telemetriaSuave.indice);
+                moverActuadorDedo('corazon', telemetriaSuave.corazon);
+                moverActuadorDedo('anular', telemetriaSuave.anular);
+                moverActuadorDedo('menique', telemetriaSuave.menique);
+
+                // --- CINEMÁTICA DEL PULGAR (Corregida con orden YXZ) ---
+                const fPulgar = telemetriaSuave.pulgar / 100;
+                const tramosPulgar = articulacionesRobóticas.pulgar;
+                
+                if (tramosPulgar && tramosPulgar.length >= 3) {
+                    // Cambiamos el orden de rotación para evitar el "Gimbal Lock"
+                    tramosPulgar[0].rotation.order = 'YXZ';
+                    
+                    // Eje Y: Mantiene la orientación del pulgar hacia el centro
+                    tramosPulgar[0].rotation.y = -Math.PI / 2;
+                    
+                    // Eje Z: AHORA SÍ, el doblez principal del nudillo base
+                    tramosPulgar[0].rotation.z = -fPulgar * ((80 * Math.PI) / 180); 
+                    
+                    // Eje X: Inclinación para acercarlo a la palma y cerrar el puño
+                    tramosPulgar[0].rotation.x = fPulgar * ((25 * Math.PI) / 180); 
+
+                    // Doblado del resto de las falanges
+                    tramosPulgar[1].rotation.z = -fPulgar * ((55 * Math.PI) / 180); 
+                    tramosPulgar[2].rotation.z = -fPulgar * ((55 * Math.PI) / 180); 
+                    
+                    tramosPulgar[1].rotation.x = 0;
+                    tramosPulgar[2].rotation.x = 0;
+                }
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
