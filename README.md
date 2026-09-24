@@ -370,3 +370,8 @@ No pretende sustituir un sistema profesional de traducción de lengua de signos,
 
 Proyecto desarrollado por **Team Kbros** para **Hack4Change**.
 
+---
+
+## Premio
+
+![Titulo obtenido](titulo.pdf)
