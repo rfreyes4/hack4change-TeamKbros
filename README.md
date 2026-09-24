@@ -5,6 +5,10 @@
 <h1 align="center">GestUS</h1>
 
 <p align="center">
+  <a href="#-premios">🥉 Tercer lugar · Hack4Change ETSII 2025-2026</a>
+</p>
+
+<p align="center">
   Guante sensorial para capturar la flexión de los dedos, reconocer gestos y visualizarlos en tiempo real mediante ESP32, Python e IA.
 </p>
 
@@ -372,6 +376,22 @@ Proyecto desarrollado por **Team Kbros** para **Hack4Change**.
 
 ---
 
-## Premio
+## 🏆 Premios
 
-![Titulo obtenido](titulo.pdf)
+### 🥉 Tercer lugar · Hack4Change ETSII 2025-2026
+
+**GestUS**, desarrollado por **Team Kbros**, obtuvo el **tercer premio** en el hackathon **Hack4Change ETSII 2025-2026** de la **Universidad de Sevilla**.
+
+Un reconocimiento a la innovación tecnológica, el compromiso social y la excelencia técnica del proyecto, alineado con los **Objetivos de Desarrollo Sostenible**.
+
+**📍 Sevilla · 22 de junio de 2026**
+
+<p align="center">
+  <a href="titulo.pdf">
+    <img src="assets/diploma-tercer-premio.jpg" alt="Diploma del tercer premio de Hack4Change ETSII 2025-2026 otorgado a Team Kbros por la Universidad de Sevilla" width="800"/>
+  </a>
+</p>
+
+<p align="center">
+  <a href="titulo.pdf">📄 Ver diploma original en PDF</a>
+</p>
