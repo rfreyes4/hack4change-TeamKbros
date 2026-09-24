@@ -370,9 +370,22 @@ No pretende sustituir un sistema profesional de traducción de lengua de signos,
 
 ---
 
-## Equipo
+## 👥 Integrantes del grupo
 
-Proyecto desarrollado por **Team Kbros** para **Hack4Change**.
+Somos **Team Kbros**, el equipo detrás de **GestUS**, desarrollado para **Hack4Change**.
+
+- **Ronald Felipe Reyes Barboza**
+- **Emilio Martínez Méndez**
+- **Jairo César Vázquez Quispe**
+- **Samir Gangadhar Tejwani Jethani**
+
+<p align="center">
+  <img src="grupo.jpeg" alt="Los cuatro integrantes de Team Kbros mostrando el guante GestUS y su visualización en el ordenador" width="420"/>
+</p>
+
+<p align="center">
+  <em>Team Kbros junto a GestUS en Hack4Change.</em>
+</p>
 
 ---
 
@@ -385,6 +398,14 @@ Proyecto desarrollado por **Team Kbros** para **Hack4Change**.
 Un reconocimiento a la innovación tecnológica, el compromiso social y la excelencia técnica del proyecto, alineado con los **Objetivos de Desarrollo Sostenible**.
 
 **📍 Sevilla · 22 de junio de 2026**
+
+<p align="center">
+  <img src="3puesto.jpg" alt="Team Kbros en la entrega del tercer premio de Hack4Change ETSII 2025-2026" width="760"/>
+</p>
+
+<p align="center">
+  <em>🥉 Un recuerdo de la entrega del tercer premio.</em>
+</p>
 
 <p align="center">
   <a href="titulo.pdf">
